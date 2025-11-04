@@ -36,7 +36,7 @@ func NewConfig() (*Configuration, error) {
 	// application configuration
 	v := viper.New()
 	v.SetConfigType("yaml")
-	v.SetConfigName(".rb")
+	v.SetConfigName(".loco")
 	v.AddConfigPath("$HOME/")
 	v.AddConfigPath(".")
 	_ = v.SafeWriteConfig()

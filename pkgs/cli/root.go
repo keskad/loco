@@ -7,7 +7,7 @@ import (
 
 func NewRootCommand(app *app.LocoApp) *cobra.Command {
 	command := &cobra.Command{
-		Use:   "rb",
+		Use:   "loco",
 		Short: "Unofficial Railbox Command Station & Decoder CLI",
 		RunE: func(command *cobra.Command, args []string) error {
 			return nil

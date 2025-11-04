@@ -143,6 +143,49 @@ func TestParseCVString(t *testing.T) {
 			},
 			separator: "",
 		},
+		{
+			name:  "cv range without value",
+			input: "cv1-cv5",
+			expected: []CVEntry{
+				{Number: 1, Value: 0},
+				{Number: 2, Value: 0},
+				{Number: 3, Value: 0},
+				{Number: 4, Value: 0},
+				{Number: 5, Value: 0},
+			},
+			separator: "",
+		},
+		{
+			name:  "cv range with value",
+			input: "cv1-cv3=7",
+			expected: []CVEntry{
+				{Number: 1, Value: 7},
+				{Number: 2, Value: 7},
+				{Number: 3, Value: 7},
+			},
+			separator: "",
+		},
+		{
+			name:  "cv range mixed with single",
+			input: "cv1-cv2=5\ncv3=9",
+			expected: []CVEntry{
+				{Number: 1, Value: 5},
+				{Number: 2, Value: 5},
+				{Number: 3, Value: 9},
+			},
+			separator: "",
+		},
+		{
+			name:  "cv range with separator",
+			input: "cv1-cv3=2,cv4=8",
+			expected: []CVEntry{
+				{Number: 1, Value: 2},
+				{Number: 2, Value: 2},
+				{Number: 3, Value: 2},
+				{Number: 4, Value: 8},
+			},
+			separator: ",",
+		},
 	}
 
 	for _, tt := range tests {
