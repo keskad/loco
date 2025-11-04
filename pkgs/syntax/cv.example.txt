@@ -1,0 +1,5 @@
+CV1=2
+cv2=3
+
+# this is a comment
+#cv3=4 # this is inactive line

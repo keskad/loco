@@ -1,0 +1,4 @@
+server:
+    type: "z21"
+    address: "192.168.0.111"
+    port: "21105"
