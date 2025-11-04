@@ -2,7 +2,8 @@ package cli
 
 import (
 	"fmt"
-	"github.com/keskad/rb/pkgs/app"
+
+	"github.com/keskad/loco/pkgs/app"
 	"github.com/spf13/cobra"
 )
 

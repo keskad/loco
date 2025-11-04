@@ -1,4 +1,4 @@
-module github.com/keskad/rb
+module github.com/keskad/loco
 
 go 1.25
 

@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/keskad/rb/pkgs/app"
-	"github.com/keskad/rb/pkgs/cli"
+	"github.com/keskad/loco/pkgs/app"
+	"github.com/keskad/loco/pkgs/cli"
 )
 
 func main() {

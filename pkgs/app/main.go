@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 
-	"github.com/keskad/rb/pkgs/commandstation"
-	"github.com/keskad/rb/pkgs/config"
+	"github.com/keskad/loco/pkgs/commandstation"
+	"github.com/keskad/loco/pkgs/config"
 	"github.com/sirupsen/logrus"
 )
 
