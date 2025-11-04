@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 
+	"github.com/keskad/loco/pkgs/syntax"
+
 	"github.com/keskad/loco/pkgs/commandstation"
 	"github.com/keskad/loco/pkgs/config"
 	"github.com/sirupsen/logrus"
@@ -58,22 +60,44 @@ func (app *LocoApp) SendCVAction(mode string, locoId uint8) error {
 	return nil
 }
 
-func (app *LocoApp) ReadCVAction(mode string, locoId uint8, cvNum uint16) error {
+func (app *LocoApp) ReadCVAction(mode string, locoId uint8, cvNumRaw string) error {
 	if cmdErr := app.initializeCommandStation(); cmdErr != nil {
 		return cmdErr
 	}
 	defer app.station.CleanUp()
 
-	result, err := app.station.ReadCV(commandstation.Mode(mode), commandstation.LocoCV{
-		LocoId: commandstation.LocoAddr(locoId),
-		Cv: commandstation.CV{
-			Num: commandstation.CVNum(cvNum),
-		},
-	})
-	if err != nil {
-		return err
+	// Try to parse as a single CV
+	entries, parseErr := syntax.ParseCVString(cvNumRaw, ",")
+	if parseErr == nil && len(entries) >= 1 {
+		if len(entries) == 1 {
+			entry := entries[0]
+			result, err := app.station.ReadCV(commandstation.Mode(mode), commandstation.LocoCV{
+				LocoId: commandstation.LocoAddr(locoId),
+				Cv: commandstation.CV{
+					Num: commandstation.CVNum(entry.Number),
+				},
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Printf("%d\n", result)
+		} else {
+			for _, entry := range entries {
+				result, err := app.station.ReadCV(commandstation.Mode(mode), commandstation.LocoCV{
+					LocoId: commandstation.LocoAddr(locoId),
+					Cv: commandstation.CV{
+						Num: commandstation.CVNum(entry.Number),
+					},
+				})
+				if err != nil {
+					fmt.Printf("cv%d=ERROR\n", entry.Number)
+				} else {
+					fmt.Printf("cv%d=%d\n", entry.Number, result)
+				}
+			}
+		}
+		return nil
 	}
 
-	print(fmt.Sprintf("%d", result))
-	return nil
+	return fmt.Errorf("invalid format: %s", cvNumRaw)
 }

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/keskad/loco/pkgs/app"
@@ -12,7 +13,7 @@ func NewCVCommand(app *app.LocoApp) *cobra.Command {
 		Use:   "cv",
 		Short: "Read & Write CVs on the locomotives using a command station",
 		RunE: func(command *cobra.Command, args []string) error {
-			return nil
+			return errors.New("please select a command")
 		},
 	}
 
@@ -47,16 +48,16 @@ func NewSetCommand(app *app.LocoApp) *cobra.Command {
 }
 
 func NewGetCommand(app *app.LocoApp) *cobra.Command {
-	type SetArgs struct {
+	type GetArgs struct {
 		LocoId uint8
-		Cv     uint16
 		Track  string
 	}
 
-	cmdArgs := SetArgs{}
+	cmdArgs := GetArgs{}
 	command := &cobra.Command{
 		Use:   "get",
 		Short: "Retrieve a CV value from the decoder",
+		Args:  cobra.ArbitraryArgs,
 		RunE: func(command *cobra.Command, args []string) error {
 			if err := app.Initialize(); err != nil {
 				return err
@@ -73,13 +74,33 @@ func NewGetCommand(app *app.LocoApp) *cobra.Command {
 					track = "prog"
 				}
 			}
-			return app.ReadCVAction(track, cmdArgs.LocoId, uint16(cmdArgs.Cv))
+
+			// Join all args before '--' as CV string
+			cvString := ""
+			if len(args) > 0 {
+				cvString = args[0]
+				if len(args) > 1 {
+					cvString = ""
+					for i, a := range args {
+						if a == "--" {
+							break
+						}
+						if i > 0 {
+							cvString += " "
+						}
+						cvString += a
+					}
+				}
+			}
+			if cvString == "" {
+				return fmt.Errorf("no CV argument provided")
+			}
+			return app.ReadCVAction(track, cmdArgs.LocoId, cvString)
 		},
 	}
 
 	command.Flags().BoolVarP(&app.Debug, "debug", "v", false, "Increase verbosity to the debug level")
 	command.Flags().Uint8VarP(&cmdArgs.LocoId, "loco", "l", 0, "Use locomotive under specific address")
-	command.Flags().Uint16VarP(&cmdArgs.Cv, "cv", "c", 0, "CV")
 	command.Flags().StringVarP(&cmdArgs.Track, "track", "t", "", "Track type: 'pom' for programming on main, 'prog' for programming track, or empty for automatic selection")
 
 	return command
