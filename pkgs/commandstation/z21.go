@@ -40,7 +40,7 @@ func (Z *Z21Roco) CleanUp() error {
 }
 
 func (Z *Z21Roco) markBuildTrackPowerOff() {
-	logrus.Debug("Marking programmng track as powered off")
+	logrus.Debug("Marking programmng track as to be powered off")
 	Z.wasPowerCutOff = true
 }
 
@@ -82,8 +82,8 @@ func (z *Z21Roco) WriteCV(mode Mode, lcv LocoCV, options ...ctxOptions) error {
 		defer z.markBuildTrackPowerOff()
 	}
 
-	logrus.Debug("Writing CV")
-	if _, writeErr := z.conn.Write(req); err != nil {
+	logrus.Debugf("Writing CV: loco=%d, CV%d=%d", lcv.LocoId, lcv.Cv.Num, lcv.Cv.Value)
+	if _, writeErr := z.conn.Write(req); writeErr != nil {
 		return fmt.Errorf("cannot write CV: %s", writeErr.Error())
 	}
 
@@ -169,6 +169,7 @@ func (z *Z21Roco) parseCVResponse(pkt []byte) (cvResult, bool) {
 
 // Sends and waits for LAN_X_CV_* (read or write-result)
 func (z *Z21Roco) sendAndAwait(conn net.Conn, req []byte, timeout time.Duration) (cvResult, error) {
+	logrus.Debugf("z21.sendAndAwait([]byte = %b)", req)
 	if _, err := conn.Write(req); err != nil {
 		return cvResult{}, err
 	}
@@ -191,18 +192,20 @@ func (z *Z21Roco) sendAndAwait(conn net.Conn, req []byte, timeout time.Duration)
 }
 
 // readCVValue is reading the POM/PROG CV response
-func (z *Z21Roco) readCVValue(mode Mode, lcv LocoCV, timeout time.Duration, retries int) (cvResult, error) {
+func (z *Z21Roco) readCVValue(mode Mode, lcv LocoCV, timeout time.Duration, retries uint8) (cvResult, error) {
 	req, reqErr := z.buildCVRequest(mode, lcv, false)
 	if reqErr != nil {
 		return cvResult{}, fmt.Errorf("cannot build CV request: %s", reqErr)
 	}
 
 	var lastErr error
-	for i := 0; i <= retries; i++ {
+	for i := 0; i <= int(retries); i++ {
+		logrus.Debugf("Try [%d/%d]", i, retries)
 		res, err := z.sendAndAwait(z.conn, req, timeout)
 		if err == nil {
 			if responseErr := res.Error(); responseErr != nil {
 				lastErr = fmt.Errorf("cannot read CV: %s", responseErr.Error())
+				err = lastErr
 				continue
 			}
 

@@ -15,6 +15,16 @@ cv1=17
 cv2=2
 ```
 
+#### Advanced syntax
+
+```bash
+$ loco cv get cv52-53=0, cv1, cv5
+cv1=17
+cv5=255
+cv52=0
+cv53=0
+```
+
 ### Specyfing a range of CVs
 
 ```bash
@@ -45,3 +55,82 @@ $ loco cv get cv2
 5
 ```
 
+### Increasing verbosity
+
+Logging messages are sent via stderr, results are in stdout.
+
+```bash
+$ loco cv get -v cv52-53=0, cv1, cv5
+DEBU[0000] Reading configuration files                  
+DEBU[0000] Initializing command station                 
+DEBU[0000] z21.sendAndAwait([]byte = [1001 0 1000000 0 100011 10001 0 0 110010]) 
+DEBU[0001] Marking programmng track as to be powered off 
+cv1=17
+DEBU[0001] z21.sendAndAwait([]byte = [1001 0 1000000 0 100011 10001 0 100 110110]) 
+DEBU[0002] Marking programmng track as to be powered off 
+cv5=255
+DEBU[0002] z21.sendAndAwait([]byte = [1001 0 1000000 0 100011 10001 0 110011 1]) 
+DEBU[0003] Marking programmng track as to be powered off 
+cv52=0
+DEBU[0003] z21.sendAndAwait([]byte = [1001 0 1000000 0 100011 10001 0 110100 110]) 
+DEBU[0004] Marking programmng track as to be powered off 
+cv53=0
+DEBU[0004] Restoring power on programming track
+```
+
+### Setting a timeout
+
+> Notice: Timeout = 0 does not mean no timeout at all, it means 0 seconds, so all commands would fail immediately
+
+```bash
+$ loco cv get cv52-53=0, cv1, cv5 --timeout 0
+cv1=ERROR
+ERRO[0000] cannot read CV: no response or unrecognized response 
+cv5=ERROR
+ERRO[0001] cannot read CV: no response or unrecognized response 
+cv52=ERROR
+ERRO[0001] cannot read CV: no response or unrecognized response 
+cv53=ERROR
+ERRO[0002] cannot read CV: no response or unrecognized response 
+Error: cannot read CV: no response or unrecognized response
+Usage:
+  loco cv get [flags]
+
+Flags:
+  -v, --debug            Increase verbosity to the debug level
+  -h, --help             help for get
+  -l, --loco uint8       Use locomotive under specific address
+      --timeout uint16   Connection timeout (default 10)
+  -t, --track string     Track type: 'pom' for programming on main, 'prog' for programming track, or empty for automatic selection
+      --verify           Verify the value after writting
+```
+
+
+### Backup & Restore CV
+
+CLI command gives an advantage over UI interfaces with a possibility of scripting. Backup & Restore is a natural use case of using CLI. You can experiment with various locomotive settings having multiple CV settings and quickly move between them by massivly dumping and loading the values.
+
+#### Get a list of selected CVs defined in a file
+
+```bash
+$ cat ./examples/cv-read.example.txt
+cv1
+cv2
+cv3-cv4
+
+$ cat ./examples/cv-read.example.txt | loco cv get -- -
+cv1=17
+cv2=2
+cv3=34
+cv4=25
+```
+
+#### Complete backup & restore workflow
+
+```bash
+# Receive CV1, CV2, CV3, CV4 and save to backup-cv.txt file
+$ loco cv get cv2-cv4 > backup-cv.txt
+
+# Then restore it to a locomotive from a backup-cv.txt file anytime
+$ cat backup-cv.txt | loco cv set -v -- -
+```

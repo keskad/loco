@@ -5,10 +5,11 @@ import (
 
 	"github.com/keskad/loco/pkgs/app"
 	"github.com/keskad/loco/pkgs/cli"
+	"github.com/keskad/loco/pkgs/output"
 )
 
 func main() {
-	app := app.LocoApp{}
+	app := app.LocoApp{P: output.ConsolePrinter{}}
 	cmd := cli.NewRootCommand(&app)
 	args := os.Args
 	if args != nil {

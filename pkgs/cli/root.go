@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"errors"
+
 	"github.com/keskad/loco/pkgs/app"
 	"github.com/spf13/cobra"
 )
@@ -10,7 +12,7 @@ func NewRootCommand(app *app.LocoApp) *cobra.Command {
 		Use:   "loco",
 		Short: "Unofficial Railbox Command Station & Decoder CLI",
 		RunE: func(command *cobra.Command, args []string) error {
-			return nil
+			return errors.New("please select a command")
 		},
 	}
 

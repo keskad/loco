@@ -17,11 +17,11 @@ type CV struct {
 }
 
 func (cv *CV) Repr() string {
-	return fmt.Sprintf("%d=%s", cv.Num, cv.Value)
+	return fmt.Sprintf("%d=%d", cv.Num, cv.Value)
 }
 
 func (cv *CV) Translate() uint16 {
-	return uint16(*&cv.Num - 1)
+	return uint16(cv.Num - 1)
 }
 
 type Station interface {
@@ -54,19 +54,26 @@ type ctxOptions func(*RequestContext) error
 type RequestContext struct {
 	timeout time.Duration
 	verify  bool
-	retries int
+	retries uint8
 	settle  time.Duration
 }
 
-func Timeout(timeout time.Duration) func(RequestContext) error {
-	return func(ctx RequestContext) error {
+func Timeout(timeout time.Duration) func(*RequestContext) error {
+	return func(ctx *RequestContext) error {
 		ctx.timeout = timeout
 		return nil
 	}
 }
 
-func Verify(shouldVerify bool) func(RequestContext) error {
-	return func(ctx RequestContext) error {
+func Retries(retries uint8) func(*RequestContext) error {
+	return func(ctx *RequestContext) error {
+		ctx.retries = retries
+		return nil
+	}
+}
+
+func Verify(shouldVerify bool) func(*RequestContext) error {
+	return func(ctx *RequestContext) error {
 		ctx.verify = shouldVerify
 		return nil
 	}
