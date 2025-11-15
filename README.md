@@ -163,3 +163,28 @@ $ loco cv get cv2-cv4 > backup-cv.txt
 # Then restore it to a locomotive from a backup-cv.txt file anytime
 $ cat backup-cv.txt | loco cv set -v -- -
 ```
+
+Toggling functions
+------------------
+
+```bash
+# list functions that are in "on" state
+$ loco fn list -l 3
+No active functions
+
+# toggle F0 and F5 to "on"
+$ loco fn set 0 -l 3
+$ loco fn set 5 -l 3
+
+# list functions, there should be two listed that we turned "on"
+$ loco fn list -l 3
+F0 = On
+F5 = On
+
+# now we turn off F5
+$ loco fn set 5 -l 3 --off
+
+# so the F0 should be listed only
+$ loco fn list -l 3
+F0 = On
+```
