@@ -28,6 +28,9 @@ type Station interface {
 	// WriteCV sends a write request to the command station to write CV of specific value for a given locomotive
 	WriteCV(mode Mode, lcv LocoCV, options ...ctxOptions) error
 	ReadCV(mode Mode, lcv LocoCV, options ...ctxOptions) (int, error)
+	SendFn(mode Mode, addr LocoAddr, num FuncNum, toggle bool) error
+	// ListFunctions returns a list of function numbers that are currently active (on) for the given locomotive
+	ListFunctions(addr LocoAddr) ([]int, error)
 	CleanUp() error
 }
 
@@ -37,6 +40,9 @@ type CVNum uint16
 // LocoAddr represents locomotive address
 type LocoAddr uint16
 
+// Function number
+type FuncNum int
+
 // Mode could be PoM or programming track. Depending on what's supported by your command station
 type Mode string
 
@@ -44,6 +50,12 @@ const (
 	MainTrackMode        Mode = "pom"
 	ProgrammingTrackMode Mode = "prog"
 )
+
+// internal key for function-group cache
+type fnStateKey struct {
+	addr   LocoAddr
+	fnType byte
+}
 
 //
 // Contextual options

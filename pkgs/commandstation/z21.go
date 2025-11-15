@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -20,6 +21,28 @@ type Z21Roco struct {
 	conn           net.Conn
 	Timeout        time.Duration
 	wasPowerCutOff bool
+	// fnStateCache keeps the last known function state bytes per locomotive.
+	// Keyed by address; value is 5 bytes covering F0..F31 as in LAN_X_LOCO_INFO (DB4..DB8).
+	fnStateCache map[LocoAddr]fnState
+	fnStateMu    sync.Mutex
+}
+
+// fnState represents function bits F0..F31 for a single loco, as reported
+// by LAN_X_LOCO_INFO. The layout follows DB4..DB8.
+//
+// Bit mapping (per Z21 spec, simplified):
+//
+//	DB4 (b7..b0): F0..F4 and direction bits (we only care about F0..F4 here)
+//	DB5: F5..F12
+//	DB6: F13..F20
+//	DB7: F21..F28
+//	DB8: F29..F31 (not all bits used)
+type fnState struct {
+	B0_4   byte // DB4
+	B5_12  byte // DB5
+	B13_20 byte // DB6
+	B21_28 byte // DB7
+	B29_31 byte // DB8
 }
 
 func (z *Z21Roco) connect(netAddr string) error {
@@ -28,6 +51,12 @@ func (z *Z21Roco) connect(netAddr string) error {
 		return fmt.Errorf("UDP dial error while connecting to Roco Z21: %s", err)
 	}
 	z.conn = conn
+	// initialize cache
+	z.fnStateMu.Lock()
+	if z.fnStateCache == nil {
+		z.fnStateCache = make(map[LocoAddr]fnState)
+	}
+	z.fnStateMu.Unlock()
 	return nil
 }
 
@@ -83,7 +112,7 @@ func (z *Z21Roco) WriteCV(mode Mode, lcv LocoCV, options ...ctxOptions) error {
 	}
 
 	logrus.Debugf("Writing CV: loco=%d, CV%d=%d", lcv.LocoId, lcv.Cv.Num, lcv.Cv.Value)
-	if _, writeErr := z.conn.Write(req); writeErr != nil {
+	if _, writeErr := z.write(req); writeErr != nil {
 		return fmt.Errorf("cannot write CV: %s", writeErr.Error())
 	}
 
@@ -117,6 +146,70 @@ func (z *Z21Roco) ReadCV(mode Mode, lcv LocoCV, options ...ctxOptions) (int, err
 		return 0, fmt.Errorf("cannot read CV: %s", readErr.Error())
 	}
 	return int(res.value), nil
+}
+
+// Sends a function request to the decoder
+func (z *Z21Roco) SendFn(mode Mode, addr LocoAddr, num FuncNum, toggle bool) error {
+	if mode != MainTrackMode {
+		return fmt.Errorf("SendFn: unsupported mode %s", mode)
+	}
+
+	fn := int(num)
+	if fn < 0 || fn > 31 {
+		return fmt.Errorf("SendFn: unsupported function number %d (must be 0-31)", num)
+	}
+
+	// Build and send the function command
+	req := z.buildSetLocoFunction(addr, fn, toggle)
+	logrus.Debugf("req(LAN_X_SET_LOCO_FUNCTION): %v", req)
+	if _, err := z.write(req); err != nil {
+		return fmt.Errorf("SendFn: cannot write function command: %s", err)
+	}
+
+	// Update our cache with the new state
+	z.updateFunctionStateCache(addr, fn, toggle)
+
+	return nil
+}
+
+// ListFunctions retrieves all active functions for a locomotive and returns their numbers
+func (z *Z21Roco) ListFunctions(addr LocoAddr) ([]int, error) {
+	// Query the command station using LAN_X_GET_LOCO_INFO
+	req := z.buildGetLocoInfo(addr)
+	logrus.Debugf("req(LAN_X_GET_LOCO_INFO): %v", req)
+	if _, err := z.write(req); err != nil {
+		return nil, fmt.Errorf("failed to send LAN_X_GET_LOCO_INFO: %w", err)
+	}
+
+	// Wait for response (LAN_X_LOCO_INFO)
+	_ = z.conn.SetReadDeadline(time.Now().Add(z.Timeout))
+	buf := make([]byte, 1500)
+	n, err := z.conn.Read(buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read LAN_X_LOCO_INFO response: %w", err)
+	}
+	logrus.Debugf("resp(LAN_X_LOCO_INFO): % X", buf[:n])
+
+	// Parse the response
+	state, err := z.parseLocoInfo(buf[:n])
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse LAN_X_LOCO_INFO: %w", err)
+	}
+
+	// Cache the state for future reference
+	z.fnStateMu.Lock()
+	z.fnStateCache[addr] = state
+	z.fnStateMu.Unlock()
+
+	// Extract all active functions (F0..F31)
+	var activeFunctions []int
+	for fnNum := 0; fnNum <= 31; fnNum++ {
+		if z.extractFunctionBit(&state, fnNum) {
+			activeFunctions = append(activeFunctions, fnNum)
+		}
+	}
+
+	return activeFunctions, nil
 }
 
 type cvResult struct {
@@ -168,16 +261,16 @@ func (z *Z21Roco) parseCVResponse(pkt []byte) (cvResult, bool) {
 }
 
 // Sends and waits for LAN_X_CV_* (read or write-result)
-func (z *Z21Roco) sendAndAwait(conn net.Conn, req []byte, timeout time.Duration) (cvResult, error) {
-	logrus.Debugf("z21.sendAndAwait([]byte = %b)", req)
-	if _, err := conn.Write(req); err != nil {
+func (z *Z21Roco) sendAndAwait(req []byte, timeout time.Duration) (cvResult, error) {
+	logrus.Debugf("z21.sendAndAwait: % X", req)
+	if _, err := z.write(req); err != nil {
 		return cvResult{}, err
 	}
-	_ = conn.SetReadDeadline(time.Now().Add(timeout))
+	_ = z.conn.SetReadDeadline(time.Now().Add(timeout))
 	buf := make([]byte, 1500)
 	end := time.Now().Add(timeout)
 	for time.Now().Before(end) {
-		n, err := conn.Read(buf)
+		n, err := z.conn.Read(buf)
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Timeout() {
 				return cvResult{}, errors.New("response timeout")
@@ -201,7 +294,7 @@ func (z *Z21Roco) readCVValue(mode Mode, lcv LocoCV, timeout time.Duration, retr
 	var lastErr error
 	for i := 0; i <= int(retries); i++ {
 		logrus.Debugf("Try [%d/%d]", i, retries)
-		res, err := z.sendAndAwait(z.conn, req, timeout)
+		res, err := z.sendAndAwait(req, timeout)
 		if err == nil {
 			if responseErr := res.Error(); responseErr != nil {
 				lastErr = fmt.Errorf("cannot read CV: %s", responseErr.Error())
@@ -215,4 +308,151 @@ func (z *Z21Roco) readCVValue(mode Mode, lcv LocoCV, timeout time.Duration, retr
 		time.Sleep(200 * time.Millisecond)
 	}
 	return cvResult{}, lastErr
+}
+
+// parseLocoInfo parses LAN_X_LOCO_INFO response (0xEF)
+func (z *Z21Roco) parseLocoInfo(pkt []byte) (fnState, error) {
+	if len(pkt) < 7 {
+		return fnState{}, fmt.Errorf("packet too short: %d bytes", len(pkt))
+	}
+
+	dataLen := binary.LittleEndian.Uint16(pkt[0:2])
+	header := binary.LittleEndian.Uint16(pkt[2:4])
+
+	if header != 0x0040 || int(dataLen) != len(pkt) {
+		return fnState{}, fmt.Errorf("invalid header or length")
+	}
+
+	if pkt[4] != 0xEF {
+		return fnState{}, fmt.Errorf("not a LAN_X_LOCO_INFO packet (X-Header: 0x%02X)", pkt[4])
+	}
+
+	// LAN_X_LOCO_INFO structure:
+	// Byte 0-1: DataLen (little endian)
+	// Byte 2-3: Header 0x0040 (little endian)
+	// Byte 4: X-Header 0xEF
+	// Byte 5: DB0 (address MSB)
+	// Byte 6: DB1 (address LSB)
+	// Byte 7: DB2 (speed/direction info)
+	// Byte 8: DB3 (speed value)
+	// Byte 9: DB4 (F0-F4 with direction)
+	// Byte 10: DB5 (F5-F12)
+	// Byte 11: DB6 (F13-F20) [optional]
+	// Byte 12: DB7 (F21-F28) [optional]
+	// Byte 13: DB8 (F29-F31) [optional, from FW 1.42+]
+	// Last byte: XOR
+
+	var state fnState
+
+	// DB4 (F0-F4) is at byte 9
+	if len(pkt) > 9 {
+		state.B0_4 = pkt[9]
+	}
+
+	// DB5 (F5-F12) is at byte 10
+	if len(pkt) > 10 {
+		state.B5_12 = pkt[10]
+	}
+
+	// DB6 (F13-F20) is at byte 11
+	if len(pkt) > 11 {
+		state.B13_20 = pkt[11]
+	}
+
+	// DB7 (F21-F28) is at byte 12
+	if len(pkt) > 12 {
+		state.B21_28 = pkt[12]
+	}
+
+	// DB8 (F29-F31) is at byte 13
+	if len(pkt) > 13 {
+		state.B29_31 = pkt[13]
+	}
+
+	return state, nil
+}
+
+// extractFunctionBit extracts the state of a specific function from fnState
+func (z *Z21Roco) extractFunctionBit(state *fnState, fnNum int) bool {
+	switch {
+	case fnNum == 0:
+		// F0 is bit 4 in DB4
+		return (state.B0_4 & 0x10) != 0
+	case fnNum >= 1 && fnNum <= 4:
+		// F1-F4 are bits 0-3 in DB4
+		return (state.B0_4 & (1 << (fnNum - 1))) != 0
+	case fnNum >= 5 && fnNum <= 12:
+		// F5-F12 are bits 0-7 in DB5
+		return (state.B5_12 & (1 << (fnNum - 5))) != 0
+	case fnNum >= 13 && fnNum <= 20:
+		// F13-F20 are bits 0-7 in DB6
+		return (state.B13_20 & (1 << (fnNum - 13))) != 0
+	case fnNum >= 21 && fnNum <= 28:
+		// F21-F28 are bits 0-7 in DB7
+		return (state.B21_28 & (1 << (fnNum - 21))) != 0
+	case fnNum >= 29 && fnNum <= 31:
+		// F29-F31 are bits 0-2 in DB8
+		return (state.B29_31 & (1 << (fnNum - 29))) != 0
+	default:
+		return false
+	}
+}
+
+// updateFunctionStateCache updates the cached function state for a locomotive
+func (z *Z21Roco) updateFunctionStateCache(addr LocoAddr, fnNum int, on bool) {
+	z.fnStateMu.Lock()
+	defer z.fnStateMu.Unlock()
+
+	state, ok := z.fnStateCache[addr]
+	if !ok {
+		// Initialize empty state if not present
+		state = fnState{}
+	}
+
+	// Update the appropriate bit
+	switch {
+	case fnNum == 0:
+		if on {
+			state.B0_4 |= 0x10
+		} else {
+			state.B0_4 &^= 0x10
+		}
+	case fnNum >= 1 && fnNum <= 4:
+		mask := byte(1 << (fnNum - 1))
+		if on {
+			state.B0_4 |= mask
+		} else {
+			state.B0_4 &^= mask
+		}
+	case fnNum >= 5 && fnNum <= 12:
+		mask := byte(1 << (fnNum - 5))
+		if on {
+			state.B5_12 |= mask
+		} else {
+			state.B5_12 &^= mask
+		}
+	case fnNum >= 13 && fnNum <= 20:
+		mask := byte(1 << (fnNum - 13))
+		if on {
+			state.B13_20 |= mask
+		} else {
+			state.B13_20 &^= mask
+		}
+	case fnNum >= 21 && fnNum <= 28:
+		mask := byte(1 << (fnNum - 21))
+		if on {
+			state.B21_28 |= mask
+		} else {
+			state.B21_28 &^= mask
+		}
+	case fnNum >= 29 && fnNum <= 31:
+		mask := byte(1 << (fnNum - 29))
+		if on {
+			state.B29_31 |= mask
+		} else {
+			state.B29_31 &^= mask
+		}
+	}
+
+	z.fnStateCache[addr] = state
 }

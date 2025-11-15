@@ -3,6 +3,35 @@ loco
 
 CLI utility to work with DCC equpied locomotives and wagons.
 
+Sending function commands (Lenz LAN)
+------------------------------------
+
+You can toggle a locomotive function (e.g. F0-F28) directly over a Lenz LAN
+TCP connection (default port 5550) using the `fn send` subcommand:
+
+```bash
+# Toggle F3 on locomotive 3 (turn on)
+$ loco fn send -l 3 -f 3 -o
+
+# Turn F3 off
+$ loco fn send -l 3 -f 3 --on=false
+
+# Specify a different host (port is fixed to 5550)
+$ loco fn send -H 192.168.0.50 -l 17 -f 0 -o
+```
+
+Flags:
+
+* `-H, --host`  Lenz command station host (port 5550 is fixed)
+* `-l, --loco`  Locomotive DCC address
+* `-f, --fn`    Function number to toggle
+* `-o, --on`    Turn the function on (use `--on=false` to turn off)
+* `-t, --timeout` Connection timeout in seconds
+* `-v, --debug` Enable debug logging (shows the raw frame bytes)
+
+The frame sent follows the XpressNet LAN_X_SET_LOCO_FUNCTION structure:
+`E4 F8 <AdrLSB> <AdrMSB> <GroupType> <GroupState> <XOR>`.
+
 
 Working with CV's
 -----------------

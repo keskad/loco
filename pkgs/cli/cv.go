@@ -67,6 +67,7 @@ func NewSetCommand(app *app.LocoApp) *cobra.Command {
 	command.Flags().Uint16VarP(&cmdArgs.Settle, "settle", "", 300, "Time in miliseconds between writes")
 	command.Flags().BoolVarP(&cmdArgs.Verify, "verify", "", false, "Verify the value after writting")
 	command.Flags().Uint8VarP(&cmdArgs.LocoId, "loco", "l", 0, "Use locomotive under specific address")
+	command.Flags().StringVarP(&cmdArgs.Track, "track", "t", "", "Track type: 'pom' for programming on main, 'prog' for programming track, or empty for automatic selection")
 
 	return command
 }
