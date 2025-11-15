@@ -159,6 +159,70 @@ func (z *Z21Roco) buildSetLocoFunction(addr LocoAddr, fnNum int, on bool) []byte
 	return append(buf, x...)
 }
 
+// buildSetLocoSpeed builds LAN_X_SET_LOCO_DRIVE command (0xE4 0x1S)
+// speedSteps: 0=14 steps, 2=28 steps, 4=128 steps
+// speed: 0=stop, 1=emergency stop, 2-127 (for 128 steps) actual speed
+// forward: true for forward direction, false for reverse
+func (z *Z21Roco) buildSetLocoSpeed(addr LocoAddr, speed uint8, forward bool, speedSteps uint8) []byte {
+	const dataLen, header = 0x000A, 0x0040
+
+	adrMSB := byte((addr >> 8) & 0x3F)
+	if addr >= 128 {
+		adrMSB |= 0xC0
+	}
+	adrLSB := byte(addr & 0xFF)
+
+	// DB0: 0x1S where S = speed steps (0=14, 2=28, 4=128)
+	db0 := byte(0x10 | (speedSteps & 0x0F))
+
+	// DB3: RVVVVVVV where R = direction (1=forward) and V = speed
+	var db3 byte
+	if forward {
+		db3 = 0x80 // Set direction bit
+	}
+
+	// Speed encoding depends on speed steps
+	switch speedSteps {
+	case 0: // 14 speed steps
+		// For DCC 14: speed 0=stop, 1=e-stop, 2-15 are steps 1-14
+		if speed > 15 {
+			speed = 15
+		}
+		db3 |= (speed & 0x0F)
+	case 2: // 28 speed steps
+		// For DCC 28: more complex encoding with bit 5
+		if speed > 28 {
+			speed = 28
+		}
+		if speed > 0 {
+			// Map 1-28 to the encoding shown in the spec
+			speedBits := byte((speed + 3) / 2) // bits 0-3
+			speedBit5 := byte((speed + 3) % 2) // bit 5
+			db3 |= (speedBit5 << 4) | (speedBits & 0x0F)
+		}
+	case 4: // 128 speed steps (default)
+		// For DCC 128: speed 0=stop, 1=e-stop, 2-127 are steps 1-126
+		if speed > 127 {
+			speed = 127
+		}
+		db3 |= (speed & 0x7F)
+	default:
+		// Default to 128 speed steps
+		db3 |= (speed & 0x7F)
+	}
+
+	x := []byte{0xE4, db0, adrMSB, adrLSB, db3}
+	x = append(x, xorSum(x))
+
+	buf := make([]byte, 0, 2+2+len(x))
+	tmp := make([]byte, 2)
+	binary.LittleEndian.PutUint16(tmp, dataLen)
+	buf = append(buf, tmp...)
+	binary.LittleEndian.PutUint16(tmp, header)
+	buf = append(buf, tmp...)
+	return append(buf, x...)
+}
+
 func (z *Z21Roco) write(b []byte) (n int, err error) {
 	logrus.Debugf("write: % X", b)
 	return z.conn.Write(b)

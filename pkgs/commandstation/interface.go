@@ -31,6 +31,8 @@ type Station interface {
 	SendFn(mode Mode, addr LocoAddr, num FuncNum, toggle bool) error
 	// ListFunctions returns a list of function numbers that are currently active (on) for the given locomotive
 	ListFunctions(addr LocoAddr) ([]int, error)
+	// SetSpeed sets the speed and direction of a locomotive
+	SetSpeed(addr LocoAddr, speed uint8, forward bool, speedSteps uint8) error
 	CleanUp() error
 }
 

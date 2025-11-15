@@ -57,3 +57,13 @@ func (app *LocoApp) initializeCommandStation() error {
 	}
 	return nil
 }
+
+// SetSpeedAction sets the speed and direction of a locomotive
+func (app *LocoApp) SetSpeedAction(locoId uint8, speed uint8, forward bool, speedSteps uint8) error {
+	if cmdErr := app.initializeCommandStation(); cmdErr != nil {
+		return cmdErr
+	}
+	defer app.station.CleanUp()
+
+	return app.station.SetSpeed(commandstation.LocoAddr(locoId), speed, forward, speedSteps)
+}

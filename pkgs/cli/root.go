@@ -18,6 +18,7 @@ func NewRootCommand(app *app.LocoApp) *cobra.Command {
 
 	command.AddCommand(NewCVCommand(app))
 	command.AddCommand(NewFnCommand(app))
+	command.AddCommand(NewSpeedCommand(app))
 
 	return command
 }

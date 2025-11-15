@@ -456,3 +456,31 @@ func (z *Z21Roco) updateFunctionStateCache(addr LocoAddr, fnNum int, on bool) {
 
 	z.fnStateCache[addr] = state
 }
+
+// SetSpeed sets the speed and direction of a locomotive
+// speed: 0=stop, 1=emergency stop, 2+ for actual speed (max depends on speedSteps)
+// forward: true for forward, false for reverse
+// speedSteps: 14, 28, or 128 (will be converted to 0, 2, or 4 for the protocol)
+func (z *Z21Roco) SetSpeed(addr LocoAddr, speed uint8, forward bool, speedSteps uint8) error {
+	// Convert speedSteps to protocol value
+	var speedStepsProto uint8
+	switch speedSteps {
+	case 14:
+		speedStepsProto = 0
+	case 28:
+		speedStepsProto = 2
+	case 128:
+		speedStepsProto = 4
+	default:
+		return fmt.Errorf("invalid speed steps: %d (must be 14, 28, or 128)", speedSteps)
+	}
+
+	// Build and send the speed command
+	req := z.buildSetLocoSpeed(addr, speed, forward, speedStepsProto)
+	logrus.Debugf("req(LAN_X_SET_LOCO_DRIVE): % X", req)
+	if _, err := z.write(req); err != nil {
+		return fmt.Errorf("SetSpeed: cannot write speed command: %w", err)
+	}
+
+	return nil
+}
