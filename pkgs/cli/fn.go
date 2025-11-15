@@ -10,6 +10,22 @@ import (
 )
 
 func NewFnCommand(app *app.LocoApp) *cobra.Command {
+	command := &cobra.Command{
+		Use:   "fn",
+		Short: "Control locomotive functions using a command station",
+		RunE: func(command *cobra.Command, args []string) error {
+			return errors.New("please select a command")
+		},
+	}
+
+	// Add the list subcommand
+	command.AddCommand(NewFnListCommand(app))
+	command.AddCommand(NewFnSetCommand(app))
+
+	return command
+}
+
+func NewFnSetCommand(app *app.LocoApp) *cobra.Command {
 	type Args struct {
 		LocoId  uint8
 		Track   string
@@ -19,7 +35,7 @@ func NewFnCommand(app *app.LocoApp) *cobra.Command {
 
 	cmdArgs := Args{}
 	command := &cobra.Command{
-		Use:   "fn",
+		Use:   "set",
 		Short: "Sends a function request to the decoder",
 		RunE: func(command *cobra.Command, args []string) error {
 			if err := app.Initialize(); err != nil {
