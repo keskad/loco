@@ -3,6 +3,7 @@ all: build
 
 build:
 	CGO_ENABLED=0 GOOS=linux go build -o bin/loco main.go
+	GOOS=windows GOARCH=amd64 go build -o bin/loco.exe main.go 
 
 ensure-go-junit-report:
 	@command -v go-junit-report || (cd /tmp && go install github.com/jstemmer/go-junit-report/v2@latest)
