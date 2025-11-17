@@ -3,6 +3,24 @@ loco
 
 CLI utility to work with DCC equpied locomotives and wagons.
 
+Setup
+-----
+
+1. Create a global configuration file
+
+```bash
+nano ~/.loco.yaml
+```
+
+2. Adjust & put configuration details
+
+```yaml
+server:
+    type: "z21"
+    address: "192.168.0.111"
+    port: "21105"
+```
+
 Sending function commands (Lenz LAN)
 ------------------------------------
 
