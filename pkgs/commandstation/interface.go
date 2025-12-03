@@ -33,6 +33,8 @@ type Station interface {
 	ListFunctions(addr LocoAddr) ([]int, error)
 	// SetSpeed sets the speed and direction of a locomotive
 	SetSpeed(addr LocoAddr, speed uint8, forward bool, speedSteps uint8) error
+	// GetSpeed retrieves the current speed and direction of a locomotive
+	GetSpeed(addr LocoAddr) (speed uint8, forward bool, err error)
 	CleanUp() error
 }
 

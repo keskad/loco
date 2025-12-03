@@ -484,3 +484,58 @@ func (z *Z21Roco) SetSpeed(addr LocoAddr, speed uint8, forward bool, speedSteps 
 
 	return nil
 }
+
+// GetSpeed retrieves the current speed and direction of a locomotive
+// Returns: speed (0-127), forward (true for forward, false for reverse), error
+func (z *Z21Roco) GetSpeed(addr LocoAddr) (uint8, bool, error) {
+	// Query the command station using LAN_X_GET_LOCO_INFO
+	req := z.buildGetLocoInfo(addr)
+	logrus.Debugf("req(LAN_X_GET_LOCO_INFO): %v", req)
+	if _, err := z.write(req); err != nil {
+		return 0, false, fmt.Errorf("failed to send LAN_X_GET_LOCO_INFO: %w", err)
+	}
+
+	// Wait for response (LAN_X_LOCO_INFO)
+	_ = z.conn.SetReadDeadline(time.Now().Add(z.Timeout))
+	buf := make([]byte, 1500)
+	n, err := z.conn.Read(buf)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to read LAN_X_LOCO_INFO response: %w", err)
+	}
+	logrus.Debugf("resp(LAN_X_LOCO_INFO): % X", buf[:n])
+
+	// Parse the response to extract speed and direction
+	// LAN_X_LOCO_INFO structure:
+	// Byte 0-1: DataLen (little endian)
+	// Byte 2-3: Header 0x0040 (little endian)
+	// Byte 4: X-Header 0xEF
+	// Byte 5: DB0 (address MSB)
+	// Byte 6: DB1 (address LSB)
+	// Byte 7: DB2 (speed/direction info) - bit 7: direction (0=forward, 1=reverse), bits 5-0: speed steps
+	// Byte 8: DB3 (speed value)
+
+	if len(buf) < 9 {
+		return 0, false, fmt.Errorf("response too short")
+	}
+
+	dataLen := binary.LittleEndian.Uint16(buf[0:2])
+	header := binary.LittleEndian.Uint16(buf[2:4])
+
+	if header != 0x0040 || int(dataLen) != n {
+		return 0, false, fmt.Errorf("invalid header or length in response")
+	}
+
+	if buf[4] != 0xEF {
+		return 0, false, fmt.Errorf("not a LAN_X_LOCO_INFO packet (X-Header: 0x%02X)", buf[4])
+	}
+
+	// Extract direction from DB2 (byte 7): bit 7 indicates direction
+	// bit 7: 0 = forward, 1 = reverse
+	directionBit := (buf[7] & 0x80) != 0
+	forward := !directionBit // invert because 1 means reverse
+
+	// Extract speed from DB3 (byte 8)
+	speed := buf[8]
+
+	return speed, forward, nil
+}
