@@ -1,0 +1,550 @@
+
+<!DOCTYPE html><html><body><head>
+<title>RailBOX RB2300 File Server</title>
+<meta charset="UTF-8">
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+  }
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+  }
+  .button {
+    display: inline-block;
+    padding: 5px 10px;
+    color: #fff;
+    text-decoration: none;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+  }
+  .text {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+  }
+  .blue { background-color: #0f5694; }
+  .red { background-color: #dc3545; }
+  .green { background-color: #28a745; }
+  .blue:hover { background-color: #09345a; }
+  .red:hover { background-color: #580b08; }
+  .green:hover { background-color: #0a4617; }
+</style>
+</head>
+<body>
+  <script>
+  async function upload() {
+    const url = location.origin + '/upload';
+
+    const element = document.querySelector('#newfile');
+    const progress = document.querySelector('#myBar');
+    const info = document.querySelector('#info');
+
+    element.disabled = true;
+    progress.style.width = 0 + "%";
+    let success = true
+
+    for (let i = 0; i < element.files.length; i++) {
+      const filename = encodeURIComponent(element.files[i].name);
+      let upload_path
+      if (window.location.search.length>0) {
+        upload_path = url + window.location.search + filename;
+      } else {
+        upload_path = url + "?/" + filename;
+      }
+
+      try {
+        const response = await fetch(upload_path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'multipart/form-data' },
+          body: element.files[i],
+        });
+
+        const respText = await response.text();
+
+        if (!response.ok) {
+          alert(response.status + " Error!\n" + respText);
+          success = false
+          break;
+        }
+      } catch(e) {
+        console.error(e);
+        alert("Upload Error!\n" + e);
+        success = false
+        break;
+      }
+      progress.style.width = Math.round((i+1)*100/element.files.length) + "%";
+    }
+    if (success)
+      alert("Files uploaded successfully");
+    element.disabled = false;
+    element.value = '';
+    location.reload();
+  }
+
+  async function rename(button) {
+    const url = location.origin + '/rename';
+    const row = button.parentElement.parentElement;
+    const inputItem = row.querySelector('input[type="text"]');
+    let rename_url
+
+    const currentFileName = encodeURIComponent(inputItem.placeholder.trim());
+    const newFileName = encodeURIComponent(inputItem.value.trim());
+
+    if (!newFileName) {
+      alert("Please enter a new name.");
+      return;
+    }
+
+    if (window.location.search.length > 0)
+      rename_url = url + window.location.search + currentFileName;
+    else
+      rename_url = url + "?/p=" + currentFileName;
+    rename_url += "&n=" + newFileName;
+
+    try {
+      const response = await fetch(rename_url, {
+        method: 'GET',
+      });
+
+      if (response.ok) {
+        inputItem.placeholder = inputItem.value.trim();
+        alert('File renamed successfully.');
+      } else {
+        const respText = await response.text();
+        alert(response.status + ' Error!\n' + respText);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Rename Error!\n' + e);
+    }
+  }
+  </script>
+  <div class="container"><table class="fixed text" border="0">
+    <col width="410px" /><col width="330px" />
+    <tr><td>
+      <h2>RailBOX RB23xx file manager</h2>
+    </td><td align="right">
+      <a href='https://www.railbox.pl/sounds'>More about sound pack creation on railbox.pl</a>
+      </td></tr>
+    </table>
+    <div id="info"></div>
+  <table class='fixed text' border='0'><col width='410px' /><col width='80px' /><col width='250px' />
+<tr><td>Firmware version: 1.11.1; Used memory: 4.3 MB / 5.9 MB</td>
+<td><label for='newfile'>Upload files</label></td>
+  <td colspan='2'>
+    <input id='newfile' type='file' onchange='upload()' style='width:100%;' multiple>
+  </td>
+</tr><tr>
+  <td>
+    <b>Sound pack #3</b>
+  </td>
+  <td colspan='2'>
+    <div id='myProgress' style='width:100%;background-color:#eee;'>
+      <div id='myBar' class='green' style='width:0%;height:20px;'></div>
+    </div>
+  </td>
+</tr>
+</table>
+<table class='fixed text' border='1'><col width='340px'/><col width='60px'/><col width='90px'/><col width='250px'/>
+<thead><tr><th>Name</th><th>Type</th><th>Size (KB)</th><th>Action</th></tr></thead>
+<tr><td>
+  <input type='text' size='45' value='F0_BUTTON_OFF.wav' placeholder='F0_BUTTON_OFF.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F0_BUTTON_OFF.wav' download='F0_BUTTON_OFF.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F0_BUTTON_OFF.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F0_BUTTON_ON.wav' placeholder='F0_BUTTON_ON.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F0_BUTTON_ON.wav' download='F0_BUTTON_ON.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F0_BUTTON_ON.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F10_Couple.wav' placeholder='F10_Couple.wav'>
+  </td><td>file</td><td align='right'>78</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F10_Couple.wav' download='F10_Couple.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F10_Couple.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F11_Decouple.wav' placeholder='F11_Decouple.wav'>
+  </td><td>file</td><td align='right'>108</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F11_Decouple.wav' download='F11_Decouple.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F11_Decouple.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F12_LOOP_S10_rj_clutters_cargo_coal_T6338.wav' placeholder='F12_LOOP_S10_rj_clutters_cargo_coal_T6338.wav'>
+  </td><td>file</td><td align='right'>50</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F12_LOOP_S10_rj_clutters_cargo_coal_T6338.wav' download='F12_LOOP_S10_rj_clutters_cargo_coal_T6338.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F12_LOOP_S10_rj_clutters_cargo_coal_T6338.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F12_LOOP_S1_rj_clutters_cargo_coal_T7696.wav' placeholder='F12_LOOP_S1_rj_clutters_cargo_coal_T7696.wav'>
+  </td><td>file</td><td align='right'>61</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F12_LOOP_S1_rj_clutters_cargo_coal_T7696.wav' download='F12_LOOP_S1_rj_clutters_cargo_coal_T7696.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F12_LOOP_S1_rj_clutters_cargo_coal_T7696.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F12_LOOP_S30_rj_clutters_cargo_coal_T4188.wav' placeholder='F12_LOOP_S30_rj_clutters_cargo_coal_T4188.wav'>
+  </td><td>file</td><td align='right'>33</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F12_LOOP_S30_rj_clutters_cargo_coal_T4188.wav' download='F12_LOOP_S30_rj_clutters_cargo_coal_T4188.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F12_LOOP_S30_rj_clutters_cargo_coal_T4188.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F12_LOOP_S5_rj_clutters_cargo_coal_T6225.wav' placeholder='F12_LOOP_S5_rj_clutters_cargo_coal_T6225.wav'>
+  </td><td>file</td><td align='right'>49</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F12_LOOP_S5_rj_clutters_cargo_coal_T6225.wav' download='F12_LOOP_S5_rj_clutters_cargo_coal_T6225.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F12_LOOP_S5_rj_clutters_cargo_coal_T6225.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F12_LOOP_S60_rj_clutters_cargo_coal_T1700.wav' placeholder='F12_LOOP_S60_rj_clutters_cargo_coal_T1700.wav'>
+  </td><td>file</td><td align='right'>14</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F12_LOOP_S60_rj_clutters_cargo_coal_T1700.wav' download='F12_LOOP_S60_rj_clutters_cargo_coal_T1700.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F12_LOOP_S60_rj_clutters_cargo_coal_T1700.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F13_LOOP_curve_screech_T13003.wav' placeholder='F13_LOOP_curve_screech_T13003.wav'>
+  </td><td>file</td><td align='right'>102</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F13_LOOP_curve_screech_T13003.wav' download='F13_LOOP_curve_screech_T13003.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F13_LOOP_curve_screech_T13003.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F13_OFF_curve_screech.wav' placeholder='F13_OFF_curve_screech.wav'>
+  </td><td>file</td><td align='right'>39</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F13_OFF_curve_screech.wav' download='F13_OFF_curve_screech.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F13_OFF_curve_screech.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F13_ON_curve_screech.wav' placeholder='F13_ON_curve_screech.wav'>
+  </td><td>file</td><td align='right'>62</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F13_ON_curve_screech.wav' download='F13_ON_curve_screech.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F13_ON_curve_screech.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F14_Brake_release.wav' placeholder='F14_Brake_release.wav'>
+  </td><td>file</td><td align='right'>29</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F14_Brake_release.wav' download='F14_Brake_release.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F14_Brake_release.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F16_BUTTON_OFF.wav' placeholder='F16_BUTTON_OFF.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F16_BUTTON_OFF.wav' download='F16_BUTTON_OFF.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F16_BUTTON_OFF.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F16_BUTTON_ON.wav' placeholder='F16_BUTTON_ON.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F16_BUTTON_ON.wav' download='F16_BUTTON_ON.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F16_BUTTON_ON.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F17_LOOP_compressor_T5716.wav' placeholder='F17_LOOP_compressor_T5716.wav'>
+  </td><td>file</td><td align='right'>45</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F17_LOOP_compressor_T5716.wav' download='F17_LOOP_compressor_T5716.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F17_LOOP_compressor_T5716.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F17_OFF_compressor.wav' placeholder='F17_OFF_compressor.wav'>
+  </td><td>file</td><td align='right'>24</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F17_OFF_compressor.wav' download='F17_OFF_compressor.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F17_OFF_compressor.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F17_ON_compressor.wav' placeholder='F17_ON_compressor.wav'>
+  </td><td>file</td><td align='right'>12</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F17_ON_compressor.wav' download='F17_ON_compressor.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F17_ON_compressor.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F18_Pressure_drop.wav' placeholder='F18_Pressure_drop.wav'>
+  </td><td>file</td><td align='right'>28</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F18_Pressure_drop.wav' download='F18_Pressure_drop.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F18_Pressure_drop.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F19_LOOP_oilpump_T5762.wav' placeholder='F19_LOOP_oilpump_T5762.wav'>
+  </td><td>file</td><td align='right'>46</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F19_LOOP_oilpump_T5762.wav' download='F19_LOOP_oilpump_T5762.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F19_LOOP_oilpump_T5762.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F19_OFF_oilpump.wav' placeholder='F19_OFF_oilpump.wav'>
+  </td><td>file</td><td align='right'>13</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F19_OFF_oilpump.wav' download='F19_OFF_oilpump.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F19_OFF_oilpump.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F19_ON_oilpump.wav' placeholder='F19_ON_oilpump.wav'>
+  </td><td>file</td><td align='right'>6</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F19_ON_oilpump.wav' download='F19_ON_oilpump.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F19_ON_oilpump.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_ACCEL_S0.wav' placeholder='F1_ACCEL_S0.wav'>
+  </td><td>file</td><td align='right'>146</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_ACCEL_S0.wav' download='F1_ACCEL_S0.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_ACCEL_S0.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_ACCEL_S30.wav' placeholder='F1_ACCEL_S30.wav'>
+  </td><td>file</td><td align='right'>174</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_ACCEL_S30.wav' download='F1_ACCEL_S30.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_ACCEL_S30.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_ACCEL_S50.wav' placeholder='F1_ACCEL_S50.wav'>
+  </td><td>file</td><td align='right'>186</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_ACCEL_S50.wav' download='F1_ACCEL_S50.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_ACCEL_S50.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_ESTOP.wav' placeholder='F1_ESTOP.wav'>
+  </td><td>file</td><td align='right'>16</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_ESTOP.wav' download='F1_ESTOP.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_ESTOP.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S0.wav' placeholder='F1_LOOP_S0.wav'>
+  </td><td>file</td><td align='right'>140</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S0.wav' download='F1_LOOP_S0.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S0.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S17_T2000.wav' placeholder='F1_LOOP_S17_T2000.wav'>
+  </td><td>file</td><td align='right'>16</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S17_T2000.wav' download='F1_LOOP_S17_T2000.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S17_T2000.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S25_T1952.wav' placeholder='F1_LOOP_S25_T1952.wav'>
+  </td><td>file</td><td align='right'>16</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S25_T1952.wav' download='F1_LOOP_S25_T1952.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S25_T1952.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S34_T2000.wav' placeholder='F1_LOOP_S34_T2000.wav'>
+  </td><td>file</td><td align='right'>16</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S34_T2000.wav' download='F1_LOOP_S34_T2000.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S34_T2000.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S42_T2000.wav' placeholder='F1_LOOP_S42_T2000.wav'>
+  </td><td>file</td><td align='right'>16</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S42_T2000.wav' download='F1_LOOP_S42_T2000.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S42_T2000.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S51_T2000.wav' placeholder='F1_LOOP_S51_T2000.wav'>
+  </td><td>file</td><td align='right'>16</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S51_T2000.wav' download='F1_LOOP_S51_T2000.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S51_T2000.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S60_T2000.wav' placeholder='F1_LOOP_S60_T2000.wav'>
+  </td><td>file</td><td align='right'>16</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S60_T2000.wav' download='F1_LOOP_S60_T2000.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S60_T2000.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S71_T2960.wav' placeholder='F1_LOOP_S71_T2960.wav'>
+  </td><td>file</td><td align='right'>62</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S71_T2960.wav' download='F1_LOOP_S71_T2960.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S71_T2960.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S81_T2960.wav' placeholder='F1_LOOP_S81_T2960.wav'>
+  </td><td>file</td><td align='right'>62</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S81_T2960.wav' download='F1_LOOP_S81_T2960.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S81_T2960.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_LOOP_S8_T2000.wav' placeholder='F1_LOOP_S8_T2000.wav'>
+  </td><td>file</td><td align='right'>16</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_LOOP_S8_T2000.wav' download='F1_LOOP_S8_T2000.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_LOOP_S8_T2000.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_OFF_M62.wav' placeholder='F1_OFF_M62.wav'>
+  </td><td>file</td><td align='right'>144</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_OFF_M62.wav' download='F1_OFF_M62.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_OFF_M62.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_ON_M62.wav' placeholder='F1_ON_M62.wav'>
+  </td><td>file</td><td align='right'>402</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_ON_M62.wav' download='F1_ON_M62.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_ON_M62.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F1_STOP_M62.wav' placeholder='F1_STOP_M62.wav'>
+  </td><td>file</td><td align='right'>55</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F1_STOP_M62.wav' download='F1_STOP_M62.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F1_STOP_M62.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F20_OFF_door_close.wav' placeholder='F20_OFF_door_close.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F20_OFF_door_close.wav' download='F20_OFF_door_close.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F20_OFF_door_close.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F20_ON_door_open.wav' placeholder='F20_ON_door_open.wav'>
+  </td><td>file</td><td align='right'>5</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F20_ON_door_open.wav' download='F20_ON_door_open.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F20_ON_door_open.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F21_LOOP_sand_T1857.wav' placeholder='F21_LOOP_sand_T1857.wav'>
+  </td><td>file</td><td align='right'>15</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F21_LOOP_sand_T1857.wav' download='F21_LOOP_sand_T1857.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F21_LOOP_sand_T1857.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F21_OFF_sand.wav' placeholder='F21_OFF_sand.wav'>
+  </td><td>file</td><td align='right'>5</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F21_OFF_sand.wav' download='F21_OFF_sand.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F21_OFF_sand.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F21_ON_sand.wav' placeholder='F21_ON_sand.wav'>
+  </td><td>file</td><td align='right'>5</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F21_ON_sand.wav' download='F21_ON_sand.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F21_ON_sand.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F26_LOOP_horn_ST44.wav' placeholder='F26_LOOP_horn_ST44.wav'>
+  </td><td>file</td><td align='right'>14</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F26_LOOP_horn_ST44.wav' download='F26_LOOP_horn_ST44.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F26_LOOP_horn_ST44.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F26_OFF_horn_ST44.wav' placeholder='F26_OFF_horn_ST44.wav'>
+  </td><td>file</td><td align='right'>25</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F26_OFF_horn_ST44.wav' download='F26_OFF_horn_ST44.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F26_OFF_horn_ST44.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F26_ON_horn_ST44.wav' placeholder='F26_ON_horn_ST44.wav'>
+  </td><td>file</td><td align='right'>65</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F26_ON_horn_ST44.wav' download='F26_ON_horn_ST44.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F26_ON_horn_ST44.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F2_LOOP_horn_ST44_T472.wav' placeholder='F2_LOOP_horn_ST44_T472.wav'>
+  </td><td>file</td><td align='right'>4</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F2_LOOP_horn_ST44_T472.wav' download='F2_LOOP_horn_ST44_T472.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F2_LOOP_horn_ST44_T472.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F2_OFF_horn_ST44.wav' placeholder='F2_OFF_horn_ST44.wav'>
+  </td><td>file</td><td align='right'>11</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F2_OFF_horn_ST44.wav' download='F2_OFF_horn_ST44.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F2_OFF_horn_ST44.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F2_ON_horn_ST44.wav' placeholder='F2_ON_horn_ST44.wav'>
+  </td><td>file</td><td align='right'>11</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F2_ON_horn_ST44.wav' download='F2_ON_horn_ST44.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F2_ON_horn_ST44.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F3_LOOP_horn_st44_T1303.wav' placeholder='F3_LOOP_horn_st44_T1303.wav'>
+  </td><td>file</td><td align='right'>11</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F3_LOOP_horn_st44_T1303.wav' download='F3_LOOP_horn_st44_T1303.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F3_LOOP_horn_st44_T1303.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F3_OFF_horn_st44.wav' placeholder='F3_OFF_horn_st44.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F3_OFF_horn_st44.wav' download='F3_OFF_horn_st44.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F3_OFF_horn_st44.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F3_ON_horn_st44.wav' placeholder='F3_ON_horn_st44.wav'>
+  </td><td>file</td><td align='right'>4</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F3_ON_horn_st44.wav' download='F3_ON_horn_st44.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F3_ON_horn_st44.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F4_BUTTON_OFF.wav' placeholder='F4_BUTTON_OFF.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F4_BUTTON_OFF.wav' download='F4_BUTTON_OFF.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F4_BUTTON_OFF.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F4_BUTTON_ON.wav' placeholder='F4_BUTTON_ON.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F4_BUTTON_ON.wav' download='F4_BUTTON_ON.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F4_BUTTON_ON.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F5_BUTTON_OFF.wav' placeholder='F5_BUTTON_OFF.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F5_BUTTON_OFF.wav' download='F5_BUTTON_OFF.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F5_BUTTON_OFF.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F5_BUTTON_ON.wav' placeholder='F5_BUTTON_ON.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F5_BUTTON_ON.wav' download='F5_BUTTON_ON.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F5_BUTTON_ON.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F7_BUTTON_OFF.wav' placeholder='F7_BUTTON_OFF.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F7_BUTTON_OFF.wav' download='F7_BUTTON_OFF.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F7_BUTTON_OFF.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F7_BUTTON_ON.wav' placeholder='F7_BUTTON_ON.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F7_BUTTON_ON.wav' download='F7_BUTTON_ON.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F7_BUTTON_ON.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F8_BUTTON_OFF.wav' placeholder='F8_BUTTON_OFF.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F8_BUTTON_OFF.wav' download='F8_BUTTON_OFF.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F8_BUTTON_OFF.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F8_BUTTON_ON.wav' placeholder='F8_BUTTON_ON.wav'>
+  </td><td>file</td><td align='right'>7</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F8_BUTTON_ON.wav' download='F8_BUTTON_ON.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F8_BUTTON_ON.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='F9_conductor_whistle.wav' placeholder='F9_conductor_whistle.wav'>
+  </td><td>file</td><td align='right'>12</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/F9_conductor_whistle.wav' download='F9_conductor_whistle.wav' class='button green'>Download</a>
+  <a href='/delete?p=/3/F9_conductor_whistle.wav' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='functions_pl.txt' placeholder='functions_pl.txt'>
+  </td><td>file</td><td align='right'>0</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/functions_pl.txt' download='functions_pl.txt' class='button green'>Download</a>
+  <a href='/delete?p=/3/functions_pl.txt' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='logic.txt' placeholder='logic.txt'>
+  </td><td>file</td><td align='right'>0</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/logic.txt' download='logic.txt' class='button green'>Download</a>
+  <a href='/delete?p=/3/logic.txt' class='button red'>Delete</a>
+</td></tr><tr><td>
+  <input type='text' size='45' value='map.txt' placeholder='map.txt'>
+  </td><td>file</td><td align='right'>0</td><td>
+  <button onclick='rename(this)' class='button blue'>Rename</button>
+  <a href='?p=/3/map.txt' download='map.txt' class='button green'>Download</a>
+  <a href='/delete?p=/3/map.txt' class='button red'>Delete</a>
+</td></tr></tbody></table></body></html>

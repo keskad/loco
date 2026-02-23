@@ -48,6 +48,7 @@ func NewDecoderRBSoundCommand(app *app.LocoApp) *cobra.Command {
 	}
 
 	command.AddCommand(NewDecoderRBSoundClearCommand(app))
+	command.AddCommand(NewDecoderRBSoundSyncCommand(app))
 
 	return command
 }
@@ -74,6 +75,38 @@ func NewDecoderRBSoundClearCommand(app *app.LocoApp) *cobra.Command {
 
 	command.Flags().BoolVarP(&app.Debug, "debug", "v", false, "Increase verbosity to the debug level")
 	command.Flags().Uint16VarP(&cmdArgs.Timeout, "timeout", "", 10, "HTTP connection timeout in seconds")
+
+	return command
+}
+
+func NewDecoderRBSoundSyncCommand(app *app.LocoApp) *cobra.Command {
+	type Args struct {
+		Timeout uint16
+		DryRun  bool
+	}
+	cmdArgs := Args{}
+
+	command := &cobra.Command{
+		Use:   "sync <slot> <local-dir>",
+		Short: "Synchronise a local directory with a sound slot on the Railbox RB23xx decoder",
+		Long: `Compares the contents of a local directory with the given sound slot on the decoder.
+Files present locally but missing on the decoder are uploaded.
+Files present on the decoder but missing locally are deleted from the decoder.
+Files present on both sides but differing in size are re-uploaded.`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(command *cobra.Command, args []string) error {
+			slot64, err := strconv.ParseUint(args[0], 10, 8)
+			if err != nil {
+				return fmt.Errorf("invalid slot number %q: %w", args[0], err)
+			}
+
+			return app.SyncSoundSlot(uint8(slot64), args[1], cmdArgs.DryRun, decoders.WithTimeout(cmdArgs.Timeout))
+		},
+	}
+
+	command.Flags().BoolVarP(&app.Debug, "debug", "v", false, "Increase verbosity to the debug level")
+	command.Flags().Uint16VarP(&cmdArgs.Timeout, "timeout", "", 10, "HTTP connection timeout in seconds")
+	command.Flags().BoolVar(&cmdArgs.DryRun, "dry-run", false, "Preview changes without uploading or deleting any files")
 
 	return command
 }
