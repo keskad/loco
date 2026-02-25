@@ -1,0 +1,38 @@
+# Pc1, Biale, przednie, kierunkowe (F0)
+O5:F0>
+O1:F0>
+O4:F0<
+O2:F0<
+
+# Pc5, Czerwone, tylnie kierunkowe (F7)
+O8:F7<
+O6:F7<
+O3:F7>
+O10:F7>
+
+# Pc2, kierunek przeciwny do zasadniczego (F4)
+O5:F4>
+O6:F4>
+O3:F4<
+O2:F4<
+
+# Pc6, pociag zatrzymany awaryjnie z jedna osoba w kabinie na szlaku wielotorowym (F15)
+O8:F15>
+O6:F15>
+O9:F15>
+O3:F15<
+O10:F15<
+O7:F15<
+
+# Tb1
+O5:F16>
+O4:F16>
+O1:F16<
+O2:F16<
+
+# Kabina
+O9:F8>
+O7:F8<
+
+# Przedzial maszynowy (F5)
+O11:F5

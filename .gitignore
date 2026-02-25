@@ -2,3 +2,5 @@ bin/*
 /coverage.out
 /junit.xml
 /backup-cv.txt
+/ai/_compiled/*
+!/ai/_compiled/.gitkeep
